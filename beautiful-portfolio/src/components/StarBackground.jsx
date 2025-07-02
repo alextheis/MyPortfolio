@@ -3,18 +3,49 @@ import { useEffect, useState } from "react";
 export const StarBackground = () => {
     const [stars, setStars] = useState([]);
     const [meteors, setMeteors] = useState([]);
+    const [isDarkMode, setIsDarkMode] = useState(false); // New state to track dark mode
+
+    useEffect(() => {
+        // Function to check if dark mode is active
+        const checkDarkMode = () => {
+            setIsDarkMode(document.documentElement.classList.contains('dark'));
+        };
+
+        // Initial check on component mount
+        checkDarkMode();
+
+        // Observe changes to the 'class' attribute of the html element
+        // This is crucial for reacting to theme changes (e.g., from ThemeToggle)
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        // Cleanup observer when component unmounts
+        return () => observer.disconnect();
+    }, []); // Empty dependency array means this effect runs once on mount
 
     useEffect(() => {
         generateStars();
-        generateMeteors();
+        // Generate meteors only if in dark mode, otherwise clear them
+        if (isDarkMode) {
+            generateMeteors();
+        } else {
+            setMeteors([]); // Clear meteors if not in dark mode
+        }
 
         const handleResize = () => {
             generateStars();
+            // Re-generate meteors on resize only if in dark mode
+            if (isDarkMode) {
+                generateMeteors();
+            } else {
+                setMeteors([]);
+            }
         };
 
         window.addEventListener('resize', handleResize);
+        // Cleanup resize listener
         return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    }, [isDarkMode]); // This effect re-runs when isDarkMode changes
 
     const generateStars = () => {
         const numberOfStars = Math.floor(
@@ -34,13 +65,13 @@ export const StarBackground = () => {
     };
 
     const generateMeteors = () => {
-        const numberOfMeteors = 8;
+        const numberOfMeteors = 8; // You can adjust this number
 
         const newMeteors = Array.from({ length: numberOfMeteors }, (_, i) => ({
             id: `meteor-${i}`,
             size: Math.random() * 2 + 1,
             x: Math.random() * 100,
-            y: Math.random() * 20,
+            y: Math.random() * 20, // Meteors typically appear from the top
             delay: Math.random() * 10,
             animationDuration: Math.random() * 2 + 4,
         }));
@@ -79,12 +110,13 @@ export const StarBackground = () => {
                     animation: twinkle 3s ease-in-out infinite;
                 }
 
+                /* The .meteor class will only be applied if meteors are generated and rendered */
                 .meteor {
                     position: absolute;
                     background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.8), transparent);
                     border-radius: 50px;
                     box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
-                    opacity: 0;
+                    opacity: 0; /* Initial opacity for the animation to fade in */
                 }
 
                 .meteor::before {
@@ -112,6 +144,7 @@ export const StarBackground = () => {
             `}</style>
 
             <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+                {/* Render stars always */}
                 {stars.map((star) => (
                     <div
                         key={star.id}
@@ -127,7 +160,8 @@ export const StarBackground = () => {
                     />
                 ))}
 
-                {meteors.map((meteor) => (
+                {/* Conditionally render meteors only if isDarkMode is true */}
+                {isDarkMode && meteors.map((meteor) => (
                     <div
                         key={meteor.id}
                         className="meteor"
